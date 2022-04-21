@@ -28,8 +28,7 @@ public class Dnn {
             DNN_BACKEND_INFERENCE_ENGINE = 0+2,
             DNN_BACKEND_OPENCV = 0+3,
             DNN_BACKEND_VKCOM = 0+4,
-            DNN_BACKEND_CUDA = 0+5,
-            DNN_BACKEND_WEBNN = 0+6;
+            DNN_BACKEND_CUDA = 0+5;
 
 
     // C++: enum SoftNMSMethod (cv.dnn.SoftNMSMethod)

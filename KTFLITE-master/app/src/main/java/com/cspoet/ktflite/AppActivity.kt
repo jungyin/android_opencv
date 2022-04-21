@@ -162,88 +162,89 @@ class AppActivity : CameraActivity() {
                     if (result != null) {
                         //先把图片摆正
                         var angle = 90
+//                        自己写的方法，获取当前摄像机位置，旋转mat
                         if (cameraView.getmCameraIndex() == CameraBridgeViewBase.CAMERA_ID_FRONT) {
                             angle = 270
                         }
                         var size = Size(result.width().toDouble(), result.height().toDouble())
                         Imgproc.warpAffine(result, result, Imgproc.getRotationMatrix2D(Point((result.width() / 2).toDouble(), (result.height() / 2).toDouble()), angle.toDouble(), -1.0), size)
                         try {
-                            if (isDetector()) {
-                                if (!isNowDetectorIng()) {
-                                    setNowDetectorIng(true)
-
-                                    val bitmap = Bitmap.createBitmap(result.width(), result.height(), Bitmap.Config.ARGB_8888)
-
-                                    Utils.matToBitmap(result, bitmap)
-                                    var mFaceRec = FaceRec(Constants.getDLibDirectoryPath())
-                                    var matRect: List<VisionDetRet> = mFaceRec.recognize(bitmap)!!
-
-                                    if (matRect.size > 0 && matRect.get(0) != null) {
-                                    try {
-                                        var matRectFace = matRect.get(0)
-                                        //只要第一张人脸,把里面的人脸切割下来
-                                        var detectorResult = result.submat(matRect.get(0).left, Math.min(matRect.get(0).left + matRect.get(0).right, result.rows()), matRect.get(0).top, Math.min(matRect.get(0).top + matRect.get(0).bottom, result.cols()))
-                                        //调整大小
-                                        var bitResult = Mat()
-                                        Imgproc.resize(detectorResult, bitResult, Size(224.toDouble(), 224.toDouble()))
-
-                                        var detectorEnd = classifier.recognizeImage(bitResult)
-
-                                        if (detectorEnd.size > 0) {
-                                            var maxIndex = 0;
-                                            if (detectorEnd.size != 1) {
-                                                for (m in 0 until detectorEnd.size) {
-                                                    if (detectorEnd[maxIndex].confidence < detectorEnd[m].confidence) {
-                                                        maxIndex = m;
-                                                    }
-                                                }
-                                            }
-                                            detectorMax = detectorEnd[maxIndex]
-                                        }
-
-                                    } catch (e: Exception) {
-                                        Log.e("hehe1", "onSuccess错误: " + e.message)
-                                        val stackTrace = e.stackTrace
-                                        for (i in stackTrace.indices) {
-                                            Log.e("hehe1", "onSuccess错误: " + stackTrace[i].className + "//" + stackTrace[i].lineNumber)
-                                        }
-                                    }
-
-                                    }
-
-
-                                    setNowDetectorIng(false)
-                                }
-//                        detector = false
-//                        runOnUiThread(object : Runnable {
-//                            override fun run() {
-//                                if(detectorMax!=null) {
-//                                    aviLoaderHolder.visibility = View.GONE
-//                                    tvLoadingText.visibility = View.GONE
-//                                    tvTextResults.text = detectorMax.toString()
-//                                    tvTextResults.visibility = View.VISIBLE
-//                                    ivImageResult.visibility = View.VISIBLE
-//                                    resultDialog.setCancelable(true)
+//                            if (isDetector()) {
+//                                if (!isNowDetectorIng()) {
+//                                    setNowDetectorIng(true)
+//
+//                                    val bitmap = Bitmap.createBitmap(result.width(), result.height(), Bitmap.Config.ARGB_8888)
+//
+//                                    Utils.matToBitmap(result, bitmap)
+////                                    var mFaceRec = FaceRec(Constants.getDLibDirectoryPath())
+//                                    var matRect: List<VisionDetRet> = mFaceRec.recognize(bitmap)!!
+//
+//                                    if (matRect.size > 0 && matRect.get(0) != null) {
+//                                    try {
+//                                        var matRectFace = matRect.get(0)
+//                                        //只要第一张人脸,把里面的人脸切割下来
+//                                        var detectorResult = result.submat(matRect.get(0).left, Math.min(matRect.get(0).left + matRect.get(0).right, result.rows()), matRect.get(0).top, Math.min(matRect.get(0).top + matRect.get(0).bottom, result.cols()))
+//                                        //调整大小
+//                                        var bitResult = Mat()
+//                                        Imgproc.resize(detectorResult, bitResult, Size(224.toDouble(), 224.toDouble()))
+//
+//                                        var detectorEnd = classifier.recognizeImage(bitResult)
+//
+//                                        if (detectorEnd.size > 0) {
+//                                            var maxIndex = 0;
+//                                            if (detectorEnd.size != 1) {
+//                                                for (m in 0 until detectorEnd.size) {
+//                                                    if (detectorEnd[maxIndex].confidence < detectorEnd[m].confidence) {
+//                                                        maxIndex = m;
+//                                                    }
+//                                                }
+//                                            }
+//                                            detectorMax = detectorEnd[maxIndex]
+//                                        }
+//
+//                                    } catch (e: Exception) {
+//                                        Log.e("hehe1", "onSuccess错误: " + e.message)
+//                                        val stackTrace = e.stackTrace
+//                                        for (i in stackTrace.indices) {
+//                                            Log.e("hehe1", "onSuccess错误: " + stackTrace[i].className + "//" + stackTrace[i].lineNumber)
+//                                        }
+//                                    }
+//
+//                                    }
+//
+//
+//                                    setNowDetectorIng(false)
 //                                }
+////                        detector = false
+////                        runOnUiThread(object : Runnable {
+////                            override fun run() {
+////                                if(detectorMax!=null) {
+////                                    aviLoaderHolder.visibility = View.GONE
+////                                    tvLoadingText.visibility = View.GONE
+////                                    tvTextResults.text = detectorMax.toString()
+////                                    tvTextResults.visibility = View.VISIBLE
+////                                    ivImageResult.visibility = View.VISIBLE
+////                                    resultDialog.setCancelable(true)
+////                                }
+////                            }
+////                        })
+//                                //人脸框绘制
+//                                if (matRectFace != null) {
+//                                    var color = Scalar(0.0, 0.0, 0.0)
+//                                    Imgproc.rectangle(result, matRectFace, color)
+//                                }
+//                                //识别率绘制
+//                                if (detectorMax != null) {
+//                                    var pt1 = Point(result.width().toDouble() / 3, result.height().toDouble() / 3 * 2)
+//
+//                                    var color = Scalar(46.0, 139.0, 87.0)
+//                                    if (detectorMax!!.title.contains("out")) {
+//                                        color = Scalar(127.0, 255.0, 0.0)
+//                                    }
+//                                    Imgproc.putText(result, detectorMax!!.title + ":" + detectorMax!!.confidence, pt1, Imgproc.FONT_HERSHEY_COMPLEX, 2.0, color)
+//                                }
+//
 //                            }
-//                        })
-                                //人脸框绘制
-                                if (matRectFace != null) {
-                                    var color = Scalar(0.0, 0.0, 0.0)
-                                    Imgproc.rectangle(result, matRectFace, color)
-                                }
-                                //识别率绘制
-                                if (detectorMax != null) {
-                                    var pt1 = Point(result.width().toDouble() / 3, result.height().toDouble() / 3 * 2)
-
-                                    var color = Scalar(46.0, 139.0, 87.0)
-                                    if (detectorMax!!.title.contains("out")) {
-                                        color = Scalar(127.0, 255.0, 0.0)
-                                    }
-                                    Imgproc.putText(result, detectorMax!!.title + ":" + detectorMax!!.confidence, pt1, Imgproc.FONT_HERSHEY_COMPLEX, 2.0, color)
-                                }
-
-                            }
                         } catch (e: Exception) {
                             Log.e("hehe1", "onSuccess错误: " + e.message)
                             val stackTrace = e.stackTrace
@@ -263,12 +264,14 @@ class AppActivity : CameraActivity() {
 
         //切换镜头
         btnToggleCamera.setOnClickListener {
+//            自己写的方法，用于切换摄像机正反面
             if (cameraView.getmCameraIndex() == CameraBridgeViewBase.CAMERA_ID_FRONT) {
                 cameraView.setCameraIndex(CameraBridgeViewBase.CAMERA_ID_BACK)
             } else {
                 cameraView.setCameraIndex(CameraBridgeViewBase.CAMERA_ID_FRONT)
 
             }
+//            自己改的方法，吧重新配置摄像机前后和调整分辨率功能打开，方便切换镜头
             cameraView.releaseCamera();
             cameraView.connectCamera(width, height)
         }
@@ -299,7 +302,7 @@ class AppActivity : CameraActivity() {
             mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
         }
 
-
+//      自己改的方法，可以重启摄像机
         cameraView.connectCamera(width, height)
     }
 

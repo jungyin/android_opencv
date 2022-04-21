@@ -374,20 +374,7 @@ public class Videoio {
             CAP_PROP_HW_ACCELERATION_USE_OPENCL = 52,
             CAP_PROP_OPEN_TIMEOUT_MSEC = 53,
             CAP_PROP_READ_TIMEOUT_MSEC = 54,
-            CAP_PROP_STREAM_OPEN_TIME_USEC = 55,
-            CAP_PROP_VIDEO_TOTAL_CHANNELS = 56,
-            CAP_PROP_VIDEO_STREAM = 57,
-            CAP_PROP_AUDIO_STREAM = 58,
-            CAP_PROP_AUDIO_POS = 59,
-            CAP_PROP_AUDIO_SHIFT_NSEC = 60,
-            CAP_PROP_AUDIO_DATA_DEPTH = 61,
-            CAP_PROP_AUDIO_SAMPLES_PER_SECOND = 62,
-            CAP_PROP_AUDIO_BASE_INDEX = 63,
-            CAP_PROP_AUDIO_TOTAL_CHANNELS = 64,
-            CAP_PROP_AUDIO_TOTAL_STREAMS = 65,
-            CAP_PROP_AUDIO_SYNCHRONIZE = 66,
-            CAP_PROP_LRF_HAS_KEY_FRAME = 67,
-            CAP_PROP_CODEC_EXTRADATA_INDEX = 68;
+            CAP_PROP_STREAM_OPEN_TIME_USEC = 55;
 
 
     // C++: enum VideoWriterProperties (cv.VideoWriterProperties)

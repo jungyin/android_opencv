@@ -1378,9 +1378,6 @@ public class Calib3d {
 
     /**
      * Finds an object pose from 3D-2D point correspondences.
-     *
-     * SEE: REF: calib3d_solvePnP
-     *
      * This function returns the rotation and the translation vectors that transform a 3D point expressed in the object
      * coordinate frame to the camera coordinate frame, using different methods:
      * <ul>
@@ -1426,9 +1423,162 @@ public class Calib3d {
      * @param useExtrinsicGuess Parameter used for #SOLVEPNP_ITERATIVE. If true (1), the function uses
      * the provided rvec and tvec values as initial approximations of the rotation and translation
      * vectors, respectively, and further optimizes them.
-     * @param flags Method for solving a PnP problem: see REF: calib3d_solvePnP_flags
+     * @param flags Method for solving a PnP problem:
+     * <ul>
+     *   <li>
+     *    REF: SOLVEPNP_ITERATIVE Iterative method is based on a Levenberg-Marquardt optimization. In
+     * this case the function finds such a pose that minimizes reprojection error, that is the sum
+     * of squared distances between the observed projections imagePoints and the projected (using
+     * REF: projectPoints ) objectPoints .
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_P3P Method is based on the paper of X.S. Gao, X.-R. Hou, J. Tang, H.-F. Chang
+     * "Complete Solution Classification for the Perspective-Three-Point Problem" (CITE: gao2003complete).
+     * In this case the function requires exactly four object and image points.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_AP3P Method is based on the paper of T. Ke, S. Roumeliotis
+     * "An Efficient Algebraic Solution to the Perspective-Three-Point Problem" (CITE: Ke17).
+     * In this case the function requires exactly four object and image points.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_EPNP Method has been introduced by F. Moreno-Noguer, V. Lepetit and P. Fua in the
+     * paper "EPnP: Efficient Perspective-n-Point Camera Pose Estimation" (CITE: lepetit2009epnp).
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_DLS <b>Broken implementation. Using this flag will fallback to EPnP.</b> \n
+     * Method is based on the paper of J. Hesch and S. Roumeliotis.
+     * "A Direct Least-Squares (DLS) Method for PnP" (CITE: hesch2011direct).
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_UPNP <b>Broken implementation. Using this flag will fallback to EPnP.</b> \n
+     * Method is based on the paper of A. Penate-Sanchez, J. Andrade-Cetto,
+     * F. Moreno-Noguer. "Exhaustive Linearization for Robust Camera Pose and Focal Length
+     * Estimation" (CITE: penate2013exhaustive). In this case the function also estimates the parameters \(f_x\) and \(f_y\)
+     * assuming that both have the same value. Then the cameraMatrix is updated with the estimated
+     * focal length.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_IPPE Method is based on the paper of T. Collins and A. Bartoli.
+     * "Infinitesimal Plane-Based Pose Estimation" (CITE: Collins14). This method requires coplanar object points.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_IPPE_SQUARE Method is based on the paper of Toby Collins and Adrien Bartoli.
+     * "Infinitesimal Plane-Based Pose Estimation" (CITE: Collins14). This method is suitable for marker pose estimation.
+     * It requires 4 coplanar object points defined in the following order:
+     *   <ul>
+     *     <li>
+     *    point 0: [-squareLength / 2,  squareLength / 2, 0]
+     *     </li>
+     *     <li>
+     *    point 1: [ squareLength / 2,  squareLength / 2, 0]
+     *     </li>
+     *     <li>
+     *    point 2: [ squareLength / 2, -squareLength / 2, 0]
+     *     </li>
+     *     <li>
+     *    point 3: [-squareLength / 2, -squareLength / 2, 0]
+     *     </li>
+     *   </ul>
+     *   <li>
+     *    REF: SOLVEPNP_SQPNP Method is based on the paper "A Consistently Fast and Globally Optimal Solution to the
+     * Perspective-n-Point Problem" by G. Terzakis and M.Lourakis (CITE: Terzakis20). It requires 3 or more points.
+     *   </li>
+     * </ul>
      *
-     * More information about Perspective-n-Points is described in REF: calib3d_solvePnP
+     *
+     * The function estimates the object pose given a set of object points, their corresponding image
+     * projections, as well as the camera intrinsic matrix and the distortion coefficients, see the figure below
+     * (more precisely, the X-axis of the camera frame is pointing to the right, the Y-axis downward
+     * and the Z-axis forward).
+     *
+     * ![](pnp.jpg)
+     *
+     * Points expressed in the world frame \( \bf{X}_w \) are projected into the image plane \( \left[ u, v \right] \)
+     * using the perspective projection model \( \Pi \) and the camera intrinsic parameters matrix \( \bf{A} \):
+     *
+     * \(
+     *   \begin{align*}
+     *   \begin{bmatrix}
+     *   u \\
+     *   v \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \bf{A} \hspace{0.1em} \Pi \hspace{0.2em} ^{c}\bf{T}_w
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix} \\
+     *   \begin{bmatrix}
+     *   u \\
+     *   v \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \begin{bmatrix}
+     *   f_x &amp; 0 &amp; c_x \\
+     *   0 &amp; f_y &amp; c_y \\
+     *   0 &amp; 0 &amp; 1
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   1 &amp; 0 &amp; 0 &amp; 0 \\
+     *   0 &amp; 1 &amp; 0 &amp; 0 \\
+     *   0 &amp; 0 &amp; 1 &amp; 0
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   r_{11} &amp; r_{12} &amp; r_{13} &amp; t_x \\
+     *   r_{21} &amp; r_{22} &amp; r_{23} &amp; t_y \\
+     *   r_{31} &amp; r_{32} &amp; r_{33} &amp; t_z \\
+     *   0 &amp; 0 &amp; 0 &amp; 1
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix}
+     *   \end{align*}
+     * \)
+     *
+     * The estimated pose is thus the rotation ({@code rvec}) and the translation ({@code tvec}) vectors that allow transforming
+     * a 3D point expressed in the world frame into the camera frame:
+     *
+     * \(
+     *   \begin{align*}
+     *   \begin{bmatrix}
+     *   X_c \\
+     *   Y_c \\
+     *   Z_c \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \hspace{0.2em} ^{c}\bf{T}_w
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix} \\
+     *   \begin{bmatrix}
+     *   X_c \\
+     *   Y_c \\
+     *   Z_c \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \begin{bmatrix}
+     *   r_{11} &amp; r_{12} &amp; r_{13} &amp; t_x \\
+     *   r_{21} &amp; r_{22} &amp; r_{23} &amp; t_y \\
+     *   r_{31} &amp; r_{32} &amp; r_{33} &amp; t_z \\
+     *   0 &amp; 0 &amp; 0 &amp; 1
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix}
+     *   \end{align*}
+     * \)
      *
      * <b>Note:</b>
      * <ul>
@@ -1508,9 +1658,6 @@ public class Calib3d {
 
     /**
      * Finds an object pose from 3D-2D point correspondences.
-     *
-     * SEE: REF: calib3d_solvePnP
-     *
      * This function returns the rotation and the translation vectors that transform a 3D point expressed in the object
      * coordinate frame to the camera coordinate frame, using different methods:
      * <ul>
@@ -1556,8 +1703,161 @@ public class Calib3d {
      * @param useExtrinsicGuess Parameter used for #SOLVEPNP_ITERATIVE. If true (1), the function uses
      * the provided rvec and tvec values as initial approximations of the rotation and translation
      * vectors, respectively, and further optimizes them.
+     * <ul>
+     *   <li>
+     *    REF: SOLVEPNP_ITERATIVE Iterative method is based on a Levenberg-Marquardt optimization. In
+     * this case the function finds such a pose that minimizes reprojection error, that is the sum
+     * of squared distances between the observed projections imagePoints and the projected (using
+     * REF: projectPoints ) objectPoints .
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_P3P Method is based on the paper of X.S. Gao, X.-R. Hou, J. Tang, H.-F. Chang
+     * "Complete Solution Classification for the Perspective-Three-Point Problem" (CITE: gao2003complete).
+     * In this case the function requires exactly four object and image points.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_AP3P Method is based on the paper of T. Ke, S. Roumeliotis
+     * "An Efficient Algebraic Solution to the Perspective-Three-Point Problem" (CITE: Ke17).
+     * In this case the function requires exactly four object and image points.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_EPNP Method has been introduced by F. Moreno-Noguer, V. Lepetit and P. Fua in the
+     * paper "EPnP: Efficient Perspective-n-Point Camera Pose Estimation" (CITE: lepetit2009epnp).
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_DLS <b>Broken implementation. Using this flag will fallback to EPnP.</b> \n
+     * Method is based on the paper of J. Hesch and S. Roumeliotis.
+     * "A Direct Least-Squares (DLS) Method for PnP" (CITE: hesch2011direct).
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_UPNP <b>Broken implementation. Using this flag will fallback to EPnP.</b> \n
+     * Method is based on the paper of A. Penate-Sanchez, J. Andrade-Cetto,
+     * F. Moreno-Noguer. "Exhaustive Linearization for Robust Camera Pose and Focal Length
+     * Estimation" (CITE: penate2013exhaustive). In this case the function also estimates the parameters \(f_x\) and \(f_y\)
+     * assuming that both have the same value. Then the cameraMatrix is updated with the estimated
+     * focal length.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_IPPE Method is based on the paper of T. Collins and A. Bartoli.
+     * "Infinitesimal Plane-Based Pose Estimation" (CITE: Collins14). This method requires coplanar object points.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_IPPE_SQUARE Method is based on the paper of Toby Collins and Adrien Bartoli.
+     * "Infinitesimal Plane-Based Pose Estimation" (CITE: Collins14). This method is suitable for marker pose estimation.
+     * It requires 4 coplanar object points defined in the following order:
+     *   <ul>
+     *     <li>
+     *    point 0: [-squareLength / 2,  squareLength / 2, 0]
+     *     </li>
+     *     <li>
+     *    point 1: [ squareLength / 2,  squareLength / 2, 0]
+     *     </li>
+     *     <li>
+     *    point 2: [ squareLength / 2, -squareLength / 2, 0]
+     *     </li>
+     *     <li>
+     *    point 3: [-squareLength / 2, -squareLength / 2, 0]
+     *     </li>
+     *   </ul>
+     *   <li>
+     *    REF: SOLVEPNP_SQPNP Method is based on the paper "A Consistently Fast and Globally Optimal Solution to the
+     * Perspective-n-Point Problem" by G. Terzakis and M.Lourakis (CITE: Terzakis20). It requires 3 or more points.
+     *   </li>
+     * </ul>
      *
-     * More information about Perspective-n-Points is described in REF: calib3d_solvePnP
+     *
+     * The function estimates the object pose given a set of object points, their corresponding image
+     * projections, as well as the camera intrinsic matrix and the distortion coefficients, see the figure below
+     * (more precisely, the X-axis of the camera frame is pointing to the right, the Y-axis downward
+     * and the Z-axis forward).
+     *
+     * ![](pnp.jpg)
+     *
+     * Points expressed in the world frame \( \bf{X}_w \) are projected into the image plane \( \left[ u, v \right] \)
+     * using the perspective projection model \( \Pi \) and the camera intrinsic parameters matrix \( \bf{A} \):
+     *
+     * \(
+     *   \begin{align*}
+     *   \begin{bmatrix}
+     *   u \\
+     *   v \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \bf{A} \hspace{0.1em} \Pi \hspace{0.2em} ^{c}\bf{T}_w
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix} \\
+     *   \begin{bmatrix}
+     *   u \\
+     *   v \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \begin{bmatrix}
+     *   f_x &amp; 0 &amp; c_x \\
+     *   0 &amp; f_y &amp; c_y \\
+     *   0 &amp; 0 &amp; 1
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   1 &amp; 0 &amp; 0 &amp; 0 \\
+     *   0 &amp; 1 &amp; 0 &amp; 0 \\
+     *   0 &amp; 0 &amp; 1 &amp; 0
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   r_{11} &amp; r_{12} &amp; r_{13} &amp; t_x \\
+     *   r_{21} &amp; r_{22} &amp; r_{23} &amp; t_y \\
+     *   r_{31} &amp; r_{32} &amp; r_{33} &amp; t_z \\
+     *   0 &amp; 0 &amp; 0 &amp; 1
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix}
+     *   \end{align*}
+     * \)
+     *
+     * The estimated pose is thus the rotation ({@code rvec}) and the translation ({@code tvec}) vectors that allow transforming
+     * a 3D point expressed in the world frame into the camera frame:
+     *
+     * \(
+     *   \begin{align*}
+     *   \begin{bmatrix}
+     *   X_c \\
+     *   Y_c \\
+     *   Z_c \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \hspace{0.2em} ^{c}\bf{T}_w
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix} \\
+     *   \begin{bmatrix}
+     *   X_c \\
+     *   Y_c \\
+     *   Z_c \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \begin{bmatrix}
+     *   r_{11} &amp; r_{12} &amp; r_{13} &amp; t_x \\
+     *   r_{21} &amp; r_{22} &amp; r_{23} &amp; t_y \\
+     *   r_{31} &amp; r_{32} &amp; r_{33} &amp; t_z \\
+     *   0 &amp; 0 &amp; 0 &amp; 1
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix}
+     *   \end{align*}
+     * \)
      *
      * <b>Note:</b>
      * <ul>
@@ -1637,9 +1937,6 @@ public class Calib3d {
 
     /**
      * Finds an object pose from 3D-2D point correspondences.
-     *
-     * SEE: REF: calib3d_solvePnP
-     *
      * This function returns the rotation and the translation vectors that transform a 3D point expressed in the object
      * coordinate frame to the camera coordinate frame, using different methods:
      * <ul>
@@ -1684,8 +1981,161 @@ public class Calib3d {
      * @param tvec Output translation vector.
      * the provided rvec and tvec values as initial approximations of the rotation and translation
      * vectors, respectively, and further optimizes them.
+     * <ul>
+     *   <li>
+     *    REF: SOLVEPNP_ITERATIVE Iterative method is based on a Levenberg-Marquardt optimization. In
+     * this case the function finds such a pose that minimizes reprojection error, that is the sum
+     * of squared distances between the observed projections imagePoints and the projected (using
+     * REF: projectPoints ) objectPoints .
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_P3P Method is based on the paper of X.S. Gao, X.-R. Hou, J. Tang, H.-F. Chang
+     * "Complete Solution Classification for the Perspective-Three-Point Problem" (CITE: gao2003complete).
+     * In this case the function requires exactly four object and image points.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_AP3P Method is based on the paper of T. Ke, S. Roumeliotis
+     * "An Efficient Algebraic Solution to the Perspective-Three-Point Problem" (CITE: Ke17).
+     * In this case the function requires exactly four object and image points.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_EPNP Method has been introduced by F. Moreno-Noguer, V. Lepetit and P. Fua in the
+     * paper "EPnP: Efficient Perspective-n-Point Camera Pose Estimation" (CITE: lepetit2009epnp).
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_DLS <b>Broken implementation. Using this flag will fallback to EPnP.</b> \n
+     * Method is based on the paper of J. Hesch and S. Roumeliotis.
+     * "A Direct Least-Squares (DLS) Method for PnP" (CITE: hesch2011direct).
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_UPNP <b>Broken implementation. Using this flag will fallback to EPnP.</b> \n
+     * Method is based on the paper of A. Penate-Sanchez, J. Andrade-Cetto,
+     * F. Moreno-Noguer. "Exhaustive Linearization for Robust Camera Pose and Focal Length
+     * Estimation" (CITE: penate2013exhaustive). In this case the function also estimates the parameters \(f_x\) and \(f_y\)
+     * assuming that both have the same value. Then the cameraMatrix is updated with the estimated
+     * focal length.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_IPPE Method is based on the paper of T. Collins and A. Bartoli.
+     * "Infinitesimal Plane-Based Pose Estimation" (CITE: Collins14). This method requires coplanar object points.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_IPPE_SQUARE Method is based on the paper of Toby Collins and Adrien Bartoli.
+     * "Infinitesimal Plane-Based Pose Estimation" (CITE: Collins14). This method is suitable for marker pose estimation.
+     * It requires 4 coplanar object points defined in the following order:
+     *   <ul>
+     *     <li>
+     *    point 0: [-squareLength / 2,  squareLength / 2, 0]
+     *     </li>
+     *     <li>
+     *    point 1: [ squareLength / 2,  squareLength / 2, 0]
+     *     </li>
+     *     <li>
+     *    point 2: [ squareLength / 2, -squareLength / 2, 0]
+     *     </li>
+     *     <li>
+     *    point 3: [-squareLength / 2, -squareLength / 2, 0]
+     *     </li>
+     *   </ul>
+     *   <li>
+     *    REF: SOLVEPNP_SQPNP Method is based on the paper "A Consistently Fast and Globally Optimal Solution to the
+     * Perspective-n-Point Problem" by G. Terzakis and M.Lourakis (CITE: Terzakis20). It requires 3 or more points.
+     *   </li>
+     * </ul>
      *
-     * More information about Perspective-n-Points is described in REF: calib3d_solvePnP
+     *
+     * The function estimates the object pose given a set of object points, their corresponding image
+     * projections, as well as the camera intrinsic matrix and the distortion coefficients, see the figure below
+     * (more precisely, the X-axis of the camera frame is pointing to the right, the Y-axis downward
+     * and the Z-axis forward).
+     *
+     * ![](pnp.jpg)
+     *
+     * Points expressed in the world frame \( \bf{X}_w \) are projected into the image plane \( \left[ u, v \right] \)
+     * using the perspective projection model \( \Pi \) and the camera intrinsic parameters matrix \( \bf{A} \):
+     *
+     * \(
+     *   \begin{align*}
+     *   \begin{bmatrix}
+     *   u \\
+     *   v \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \bf{A} \hspace{0.1em} \Pi \hspace{0.2em} ^{c}\bf{T}_w
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix} \\
+     *   \begin{bmatrix}
+     *   u \\
+     *   v \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \begin{bmatrix}
+     *   f_x &amp; 0 &amp; c_x \\
+     *   0 &amp; f_y &amp; c_y \\
+     *   0 &amp; 0 &amp; 1
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   1 &amp; 0 &amp; 0 &amp; 0 \\
+     *   0 &amp; 1 &amp; 0 &amp; 0 \\
+     *   0 &amp; 0 &amp; 1 &amp; 0
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   r_{11} &amp; r_{12} &amp; r_{13} &amp; t_x \\
+     *   r_{21} &amp; r_{22} &amp; r_{23} &amp; t_y \\
+     *   r_{31} &amp; r_{32} &amp; r_{33} &amp; t_z \\
+     *   0 &amp; 0 &amp; 0 &amp; 1
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix}
+     *   \end{align*}
+     * \)
+     *
+     * The estimated pose is thus the rotation ({@code rvec}) and the translation ({@code tvec}) vectors that allow transforming
+     * a 3D point expressed in the world frame into the camera frame:
+     *
+     * \(
+     *   \begin{align*}
+     *   \begin{bmatrix}
+     *   X_c \\
+     *   Y_c \\
+     *   Z_c \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \hspace{0.2em} ^{c}\bf{T}_w
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix} \\
+     *   \begin{bmatrix}
+     *   X_c \\
+     *   Y_c \\
+     *   Z_c \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \begin{bmatrix}
+     *   r_{11} &amp; r_{12} &amp; r_{13} &amp; t_x \\
+     *   r_{21} &amp; r_{22} &amp; r_{23} &amp; t_y \\
+     *   r_{31} &amp; r_{32} &amp; r_{33} &amp; t_z \\
+     *   0 &amp; 0 &amp; 0 &amp; 1
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix}
+     *   \end{align*}
+     * \)
      *
      * <b>Note:</b>
      * <ul>
@@ -1771,8 +2221,6 @@ public class Calib3d {
     /**
      * Finds an object pose from 3D-2D point correspondences using the RANSAC scheme.
      *
-     * SEE: REF: calib3d_solvePnP
-     *
      * @param objectPoints Array of object points in the object coordinate space, Nx3 1-channel or
      * 1xN/Nx1 3-channel, where N is the number of points. vector&lt;Point3d&gt; can be also passed here.
      * @param imagePoints Array of corresponding image points, Nx2 1-channel or 1xN/Nx1 2-channel,
@@ -1836,8 +2284,6 @@ public class Calib3d {
     /**
      * Finds an object pose from 3D-2D point correspondences using the RANSAC scheme.
      *
-     * SEE: REF: calib3d_solvePnP
-     *
      * @param objectPoints Array of object points in the object coordinate space, Nx3 1-channel or
      * 1xN/Nx1 3-channel, where N is the number of points. vector&lt;Point3d&gt; can be also passed here.
      * @param imagePoints Array of corresponding image points, Nx2 1-channel or 1xN/Nx1 2-channel,
@@ -1900,8 +2346,6 @@ public class Calib3d {
     /**
      * Finds an object pose from 3D-2D point correspondences using the RANSAC scheme.
      *
-     * SEE: REF: calib3d_solvePnP
-     *
      * @param objectPoints Array of object points in the object coordinate space, Nx3 1-channel or
      * 1xN/Nx1 3-channel, where N is the number of points. vector&lt;Point3d&gt; can be also passed here.
      * @param imagePoints Array of corresponding image points, Nx2 1-channel or 1xN/Nx1 2-channel,
@@ -1963,8 +2407,6 @@ public class Calib3d {
     /**
      * Finds an object pose from 3D-2D point correspondences using the RANSAC scheme.
      *
-     * SEE: REF: calib3d_solvePnP
-     *
      * @param objectPoints Array of object points in the object coordinate space, Nx3 1-channel or
      * 1xN/Nx1 3-channel, where N is the number of points. vector&lt;Point3d&gt; can be also passed here.
      * @param imagePoints Array of corresponding image points, Nx2 1-channel or 1xN/Nx1 2-channel,
@@ -2025,8 +2467,6 @@ public class Calib3d {
     /**
      * Finds an object pose from 3D-2D point correspondences using the RANSAC scheme.
      *
-     * SEE: REF: calib3d_solvePnP
-     *
      * @param objectPoints Array of object points in the object coordinate space, Nx3 1-channel or
      * 1xN/Nx1 3-channel, where N is the number of points. vector&lt;Point3d&gt; can be also passed here.
      * @param imagePoints Array of corresponding image points, Nx2 1-channel or 1xN/Nx1 2-channel,
@@ -2086,8 +2526,6 @@ public class Calib3d {
     /**
      * Finds an object pose from 3D-2D point correspondences using the RANSAC scheme.
      *
-     * SEE: REF: calib3d_solvePnP
-     *
      * @param objectPoints Array of object points in the object coordinate space, Nx3 1-channel or
      * 1xN/Nx1 3-channel, where N is the number of points. vector&lt;Point3d&gt; can be also passed here.
      * @param imagePoints Array of corresponding image points, Nx2 1-channel or 1xN/Nx1 2-channel,
@@ -2145,8 +2583,6 @@ public class Calib3d {
 
     /**
      * Finds an object pose from 3D-2D point correspondences using the RANSAC scheme.
-     *
-     * SEE: REF: calib3d_solvePnP
      *
      * @param objectPoints Array of object points in the object coordinate space, Nx3 1-channel or
      * 1xN/Nx1 3-channel, where N is the number of points. vector&lt;Point3d&gt; can be also passed here.
@@ -2229,8 +2665,6 @@ public class Calib3d {
     /**
      * Finds an object pose from 3 3D-2D point correspondences.
      *
-     * SEE: REF: calib3d_solvePnP
-     *
      * @param objectPoints Array of object points in the object coordinate space, 3x3 1-channel or
      * 1x3/3x1 3-channel. vector&lt;Point3f&gt; can be also passed here.
      * @param imagePoints Array of corresponding image points, 3x2 1-channel or 1x3/3x1 2-channel.
@@ -2281,8 +2715,6 @@ public class Calib3d {
      * Refine a pose (the translation and the rotation that transform a 3D point expressed in the object coordinate frame
      * to the camera coordinate frame) from a 3D-2D point correspondences and starting from an initial solution.
      *
-     * SEE: REF: calib3d_solvePnP
-     *
      * @param objectPoints Array of object points in the object coordinate space, Nx3 1-channel or 1xN/Nx1 3-channel,
      * where N is the number of points. vector&lt;Point3d&gt; can also be passed here.
      * @param imagePoints Array of corresponding image points, Nx2 1-channel or 1xN/Nx1 2-channel,
@@ -2309,8 +2741,6 @@ public class Calib3d {
     /**
      * Refine a pose (the translation and the rotation that transform a 3D point expressed in the object coordinate frame
      * to the camera coordinate frame) from a 3D-2D point correspondences and starting from an initial solution.
-     *
-     * SEE: REF: calib3d_solvePnP
      *
      * @param objectPoints Array of object points in the object coordinate space, Nx3 1-channel or 1xN/Nx1 3-channel,
      * where N is the number of points. vector&lt;Point3d&gt; can also be passed here.
@@ -2343,8 +2773,6 @@ public class Calib3d {
      * Refine a pose (the translation and the rotation that transform a 3D point expressed in the object coordinate frame
      * to the camera coordinate frame) from a 3D-2D point correspondences and starting from an initial solution.
      *
-     * SEE: REF: calib3d_solvePnP
-     *
      * @param objectPoints Array of object points in the object coordinate space, Nx3 1-channel or 1xN/Nx1 3-channel,
      * where N is the number of points. vector&lt;Point3d&gt; can also be passed here.
      * @param imagePoints Array of corresponding image points, Nx2 1-channel or 1xN/Nx1 2-channel,
@@ -2374,8 +2802,6 @@ public class Calib3d {
      * Refine a pose (the translation and the rotation that transform a 3D point expressed in the object coordinate frame
      * to the camera coordinate frame) from a 3D-2D point correspondences and starting from an initial solution.
      *
-     * SEE: REF: calib3d_solvePnP
-     *
      * @param objectPoints Array of object points in the object coordinate space, Nx3 1-channel or 1xN/Nx1 3-channel,
      * where N is the number of points. vector&lt;Point3d&gt; can also be passed here.
      * @param imagePoints Array of corresponding image points, Nx2 1-channel or 1xN/Nx1 2-channel,
@@ -2403,8 +2829,6 @@ public class Calib3d {
     /**
      * Refine a pose (the translation and the rotation that transform a 3D point expressed in the object coordinate frame
      * to the camera coordinate frame) from a 3D-2D point correspondences and starting from an initial solution.
-     *
-     * SEE: REF: calib3d_solvePnP
      *
      * @param objectPoints Array of object points in the object coordinate space, Nx3 1-channel or 1xN/Nx1 3-channel,
      * where N is the number of points. vector&lt;Point3d&gt; can also be passed here.
@@ -2436,9 +2860,6 @@ public class Calib3d {
 
     /**
      * Finds an object pose from 3D-2D point correspondences.
-     *
-     * SEE: REF: calib3d_solvePnP
-     *
      * This function returns a list of all the possible solutions (a solution is a &lt;rotation vector, translation vector&gt;
      * couple), depending on the number of input points and the chosen method:
      * <ul>
@@ -2485,7 +2906,61 @@ public class Calib3d {
      * @param useExtrinsicGuess Parameter used for #SOLVEPNP_ITERATIVE. If true (1), the function uses
      * the provided rvec and tvec values as initial approximations of the rotation and translation
      * vectors, respectively, and further optimizes them.
-     * @param flags Method for solving a PnP problem: see REF: calib3d_solvePnP_flags
+     * @param flags Method for solving a PnP problem:
+     * <ul>
+     *   <li>
+     *    REF: SOLVEPNP_ITERATIVE Iterative method is based on a Levenberg-Marquardt optimization. In
+     * this case the function finds such a pose that minimizes reprojection error, that is the sum
+     * of squared distances between the observed projections imagePoints and the projected (using
+     *  #projectPoints ) objectPoints .
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_P3P Method is based on the paper of X.S. Gao, X.-R. Hou, J. Tang, H.-F. Chang
+     * "Complete Solution Classification for the Perspective-Three-Point Problem" (CITE: gao2003complete).
+     * In this case the function requires exactly four object and image points.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_AP3P Method is based on the paper of T. Ke, S. Roumeliotis
+     * "An Efficient Algebraic Solution to the Perspective-Three-Point Problem" (CITE: Ke17).
+     * In this case the function requires exactly four object and image points.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_EPNP Method has been introduced by F.Moreno-Noguer, V.Lepetit and P.Fua in the
+     * paper "EPnP: Efficient Perspective-n-Point Camera Pose Estimation" (CITE: lepetit2009epnp).
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_DLS <b>Broken implementation. Using this flag will fallback to EPnP.</b> \n
+     * Method is based on the paper of Joel A. Hesch and Stergios I. Roumeliotis.
+     * "A Direct Least-Squares (DLS) Method for PnP" (CITE: hesch2011direct).
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_UPNP <b>Broken implementation. Using this flag will fallback to EPnP.</b> \n
+     * Method is based on the paper of A.Penate-Sanchez, J.Andrade-Cetto,
+     * F.Moreno-Noguer. "Exhaustive Linearization for Robust Camera Pose and Focal Length
+     * Estimation" (CITE: penate2013exhaustive). In this case the function also estimates the parameters \(f_x\) and \(f_y\)
+     * assuming that both have the same value. Then the cameraMatrix is updated with the estimated
+     * focal length.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_IPPE Method is based on the paper of T. Collins and A. Bartoli.
+     * "Infinitesimal Plane-Based Pose Estimation" (CITE: Collins14). This method requires coplanar object points.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_IPPE_SQUARE Method is based on the paper of Toby Collins and Adrien Bartoli.
+     * "Infinitesimal Plane-Based Pose Estimation" (CITE: Collins14). This method is suitable for marker pose estimation.
+     * It requires 4 coplanar object points defined in the following order:
+     *   <ul>
+     *     <li>
+     *    point 0: [-squareLength / 2,  squareLength / 2, 0]
+     *     </li>
+     *     <li>
+     *    point 1: [ squareLength / 2,  squareLength / 2, 0]
+     *     </li>
+     *     <li>
+     *    point 2: [ squareLength / 2, -squareLength / 2, 0]
+     *     </li>
+     *     <li>
+     *    point 3: [-squareLength / 2, -squareLength / 2, 0]
      * @param rvec Rotation vector used to initialize an iterative PnP refinement algorithm, when flag is REF: SOLVEPNP_ITERATIVE
      * and useExtrinsicGuess is set to true.
      * @param tvec Translation vector used to initialize an iterative PnP refinement algorithm, when flag is REF: SOLVEPNP_ITERATIVE
@@ -2493,8 +2968,103 @@ public class Calib3d {
      * @param reprojectionError Optional vector of reprojection error, that is the RMS error
      * (\( \text{RMSE} = \sqrt{\frac{\sum_{i}^{N} \left ( \hat{y_i} - y_i \right )^2}{N}} \)) between the input image points
      * and the 3D object points projected with the estimated pose.
+     *     </li>
+     *   </ul>
      *
-     * More information is described in REF: calib3d_solvePnP
+     * The function estimates the object pose given a set of object points, their corresponding image
+     * projections, as well as the camera intrinsic matrix and the distortion coefficients, see the figure below
+     * (more precisely, the X-axis of the camera frame is pointing to the right, the Y-axis downward
+     * and the Z-axis forward).
+     *   </li>
+     * </ul>
+     *
+     * ![](pnp.jpg)
+     *
+     * Points expressed in the world frame \( \bf{X}_w \) are projected into the image plane \( \left[ u, v \right] \)
+     * using the perspective projection model \( \Pi \) and the camera intrinsic parameters matrix \( \bf{A} \):
+     *
+     * \(
+     *   \begin{align*}
+     *   \begin{bmatrix}
+     *   u \\
+     *   v \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \bf{A} \hspace{0.1em} \Pi \hspace{0.2em} ^{c}\bf{T}_w
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix} \\
+     *   \begin{bmatrix}
+     *   u \\
+     *   v \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \begin{bmatrix}
+     *   f_x &amp; 0 &amp; c_x \\
+     *   0 &amp; f_y &amp; c_y \\
+     *   0 &amp; 0 &amp; 1
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   1 &amp; 0 &amp; 0 &amp; 0 \\
+     *   0 &amp; 1 &amp; 0 &amp; 0 \\
+     *   0 &amp; 0 &amp; 1 &amp; 0
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   r_{11} &amp; r_{12} &amp; r_{13} &amp; t_x \\
+     *   r_{21} &amp; r_{22} &amp; r_{23} &amp; t_y \\
+     *   r_{31} &amp; r_{32} &amp; r_{33} &amp; t_z \\
+     *   0 &amp; 0 &amp; 0 &amp; 1
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix}
+     *   \end{align*}
+     * \)
+     *
+     * The estimated pose is thus the rotation ({@code rvec}) and the translation ({@code tvec}) vectors that allow transforming
+     * a 3D point expressed in the world frame into the camera frame:
+     *
+     * \(
+     *   \begin{align*}
+     *   \begin{bmatrix}
+     *   X_c \\
+     *   Y_c \\
+     *   Z_c \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \hspace{0.2em} ^{c}\bf{T}_w
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix} \\
+     *   \begin{bmatrix}
+     *   X_c \\
+     *   Y_c \\
+     *   Z_c \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \begin{bmatrix}
+     *   r_{11} &amp; r_{12} &amp; r_{13} &amp; t_x \\
+     *   r_{21} &amp; r_{22} &amp; r_{23} &amp; t_y \\
+     *   r_{31} &amp; r_{32} &amp; r_{33} &amp; t_z \\
+     *   0 &amp; 0 &amp; 0 &amp; 1
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix}
+     *   \end{align*}
+     * \)
      *
      * <b>Note:</b>
      * <ul>
@@ -2573,9 +3143,6 @@ public class Calib3d {
 
     /**
      * Finds an object pose from 3D-2D point correspondences.
-     *
-     * SEE: REF: calib3d_solvePnP
-     *
      * This function returns a list of all the possible solutions (a solution is a &lt;rotation vector, translation vector&gt;
      * couple), depending on the number of input points and the chosen method:
      * <ul>
@@ -2622,15 +3189,164 @@ public class Calib3d {
      * @param useExtrinsicGuess Parameter used for #SOLVEPNP_ITERATIVE. If true (1), the function uses
      * the provided rvec and tvec values as initial approximations of the rotation and translation
      * vectors, respectively, and further optimizes them.
-     * @param flags Method for solving a PnP problem: see REF: calib3d_solvePnP_flags
+     * @param flags Method for solving a PnP problem:
+     * <ul>
+     *   <li>
+     *    REF: SOLVEPNP_ITERATIVE Iterative method is based on a Levenberg-Marquardt optimization. In
+     * this case the function finds such a pose that minimizes reprojection error, that is the sum
+     * of squared distances between the observed projections imagePoints and the projected (using
+     *  #projectPoints ) objectPoints .
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_P3P Method is based on the paper of X.S. Gao, X.-R. Hou, J. Tang, H.-F. Chang
+     * "Complete Solution Classification for the Perspective-Three-Point Problem" (CITE: gao2003complete).
+     * In this case the function requires exactly four object and image points.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_AP3P Method is based on the paper of T. Ke, S. Roumeliotis
+     * "An Efficient Algebraic Solution to the Perspective-Three-Point Problem" (CITE: Ke17).
+     * In this case the function requires exactly four object and image points.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_EPNP Method has been introduced by F.Moreno-Noguer, V.Lepetit and P.Fua in the
+     * paper "EPnP: Efficient Perspective-n-Point Camera Pose Estimation" (CITE: lepetit2009epnp).
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_DLS <b>Broken implementation. Using this flag will fallback to EPnP.</b> \n
+     * Method is based on the paper of Joel A. Hesch and Stergios I. Roumeliotis.
+     * "A Direct Least-Squares (DLS) Method for PnP" (CITE: hesch2011direct).
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_UPNP <b>Broken implementation. Using this flag will fallback to EPnP.</b> \n
+     * Method is based on the paper of A.Penate-Sanchez, J.Andrade-Cetto,
+     * F.Moreno-Noguer. "Exhaustive Linearization for Robust Camera Pose and Focal Length
+     * Estimation" (CITE: penate2013exhaustive). In this case the function also estimates the parameters \(f_x\) and \(f_y\)
+     * assuming that both have the same value. Then the cameraMatrix is updated with the estimated
+     * focal length.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_IPPE Method is based on the paper of T. Collins and A. Bartoli.
+     * "Infinitesimal Plane-Based Pose Estimation" (CITE: Collins14). This method requires coplanar object points.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_IPPE_SQUARE Method is based on the paper of Toby Collins and Adrien Bartoli.
+     * "Infinitesimal Plane-Based Pose Estimation" (CITE: Collins14). This method is suitable for marker pose estimation.
+     * It requires 4 coplanar object points defined in the following order:
+     *   <ul>
+     *     <li>
+     *    point 0: [-squareLength / 2,  squareLength / 2, 0]
+     *     </li>
+     *     <li>
+     *    point 1: [ squareLength / 2,  squareLength / 2, 0]
+     *     </li>
+     *     <li>
+     *    point 2: [ squareLength / 2, -squareLength / 2, 0]
+     *     </li>
+     *     <li>
+     *    point 3: [-squareLength / 2, -squareLength / 2, 0]
      * @param rvec Rotation vector used to initialize an iterative PnP refinement algorithm, when flag is REF: SOLVEPNP_ITERATIVE
      * and useExtrinsicGuess is set to true.
      * @param tvec Translation vector used to initialize an iterative PnP refinement algorithm, when flag is REF: SOLVEPNP_ITERATIVE
      * and useExtrinsicGuess is set to true.
      * (\( \text{RMSE} = \sqrt{\frac{\sum_{i}^{N} \left ( \hat{y_i} - y_i \right )^2}{N}} \)) between the input image points
      * and the 3D object points projected with the estimated pose.
+     *     </li>
+     *   </ul>
      *
-     * More information is described in REF: calib3d_solvePnP
+     * The function estimates the object pose given a set of object points, their corresponding image
+     * projections, as well as the camera intrinsic matrix and the distortion coefficients, see the figure below
+     * (more precisely, the X-axis of the camera frame is pointing to the right, the Y-axis downward
+     * and the Z-axis forward).
+     *   </li>
+     * </ul>
+     *
+     * ![](pnp.jpg)
+     *
+     * Points expressed in the world frame \( \bf{X}_w \) are projected into the image plane \( \left[ u, v \right] \)
+     * using the perspective projection model \( \Pi \) and the camera intrinsic parameters matrix \( \bf{A} \):
+     *
+     * \(
+     *   \begin{align*}
+     *   \begin{bmatrix}
+     *   u \\
+     *   v \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \bf{A} \hspace{0.1em} \Pi \hspace{0.2em} ^{c}\bf{T}_w
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix} \\
+     *   \begin{bmatrix}
+     *   u \\
+     *   v \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \begin{bmatrix}
+     *   f_x &amp; 0 &amp; c_x \\
+     *   0 &amp; f_y &amp; c_y \\
+     *   0 &amp; 0 &amp; 1
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   1 &amp; 0 &amp; 0 &amp; 0 \\
+     *   0 &amp; 1 &amp; 0 &amp; 0 \\
+     *   0 &amp; 0 &amp; 1 &amp; 0
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   r_{11} &amp; r_{12} &amp; r_{13} &amp; t_x \\
+     *   r_{21} &amp; r_{22} &amp; r_{23} &amp; t_y \\
+     *   r_{31} &amp; r_{32} &amp; r_{33} &amp; t_z \\
+     *   0 &amp; 0 &amp; 0 &amp; 1
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix}
+     *   \end{align*}
+     * \)
+     *
+     * The estimated pose is thus the rotation ({@code rvec}) and the translation ({@code tvec}) vectors that allow transforming
+     * a 3D point expressed in the world frame into the camera frame:
+     *
+     * \(
+     *   \begin{align*}
+     *   \begin{bmatrix}
+     *   X_c \\
+     *   Y_c \\
+     *   Z_c \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \hspace{0.2em} ^{c}\bf{T}_w
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix} \\
+     *   \begin{bmatrix}
+     *   X_c \\
+     *   Y_c \\
+     *   Z_c \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \begin{bmatrix}
+     *   r_{11} &amp; r_{12} &amp; r_{13} &amp; t_x \\
+     *   r_{21} &amp; r_{22} &amp; r_{23} &amp; t_y \\
+     *   r_{31} &amp; r_{32} &amp; r_{33} &amp; t_z \\
+     *   0 &amp; 0 &amp; 0 &amp; 1
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix}
+     *   \end{align*}
+     * \)
      *
      * <b>Note:</b>
      * <ul>
@@ -2709,9 +3425,6 @@ public class Calib3d {
 
     /**
      * Finds an object pose from 3D-2D point correspondences.
-     *
-     * SEE: REF: calib3d_solvePnP
-     *
      * This function returns a list of all the possible solutions (a solution is a &lt;rotation vector, translation vector&gt;
      * couple), depending on the number of input points and the chosen method:
      * <ul>
@@ -2758,14 +3471,163 @@ public class Calib3d {
      * @param useExtrinsicGuess Parameter used for #SOLVEPNP_ITERATIVE. If true (1), the function uses
      * the provided rvec and tvec values as initial approximations of the rotation and translation
      * vectors, respectively, and further optimizes them.
-     * @param flags Method for solving a PnP problem: see REF: calib3d_solvePnP_flags
+     * @param flags Method for solving a PnP problem:
+     * <ul>
+     *   <li>
+     *    REF: SOLVEPNP_ITERATIVE Iterative method is based on a Levenberg-Marquardt optimization. In
+     * this case the function finds such a pose that minimizes reprojection error, that is the sum
+     * of squared distances between the observed projections imagePoints and the projected (using
+     *  #projectPoints ) objectPoints .
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_P3P Method is based on the paper of X.S. Gao, X.-R. Hou, J. Tang, H.-F. Chang
+     * "Complete Solution Classification for the Perspective-Three-Point Problem" (CITE: gao2003complete).
+     * In this case the function requires exactly four object and image points.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_AP3P Method is based on the paper of T. Ke, S. Roumeliotis
+     * "An Efficient Algebraic Solution to the Perspective-Three-Point Problem" (CITE: Ke17).
+     * In this case the function requires exactly four object and image points.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_EPNP Method has been introduced by F.Moreno-Noguer, V.Lepetit and P.Fua in the
+     * paper "EPnP: Efficient Perspective-n-Point Camera Pose Estimation" (CITE: lepetit2009epnp).
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_DLS <b>Broken implementation. Using this flag will fallback to EPnP.</b> \n
+     * Method is based on the paper of Joel A. Hesch and Stergios I. Roumeliotis.
+     * "A Direct Least-Squares (DLS) Method for PnP" (CITE: hesch2011direct).
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_UPNP <b>Broken implementation. Using this flag will fallback to EPnP.</b> \n
+     * Method is based on the paper of A.Penate-Sanchez, J.Andrade-Cetto,
+     * F.Moreno-Noguer. "Exhaustive Linearization for Robust Camera Pose and Focal Length
+     * Estimation" (CITE: penate2013exhaustive). In this case the function also estimates the parameters \(f_x\) and \(f_y\)
+     * assuming that both have the same value. Then the cameraMatrix is updated with the estimated
+     * focal length.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_IPPE Method is based on the paper of T. Collins and A. Bartoli.
+     * "Infinitesimal Plane-Based Pose Estimation" (CITE: Collins14). This method requires coplanar object points.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_IPPE_SQUARE Method is based on the paper of Toby Collins and Adrien Bartoli.
+     * "Infinitesimal Plane-Based Pose Estimation" (CITE: Collins14). This method is suitable for marker pose estimation.
+     * It requires 4 coplanar object points defined in the following order:
+     *   <ul>
+     *     <li>
+     *    point 0: [-squareLength / 2,  squareLength / 2, 0]
+     *     </li>
+     *     <li>
+     *    point 1: [ squareLength / 2,  squareLength / 2, 0]
+     *     </li>
+     *     <li>
+     *    point 2: [ squareLength / 2, -squareLength / 2, 0]
+     *     </li>
+     *     <li>
+     *    point 3: [-squareLength / 2, -squareLength / 2, 0]
      * @param rvec Rotation vector used to initialize an iterative PnP refinement algorithm, when flag is REF: SOLVEPNP_ITERATIVE
      * and useExtrinsicGuess is set to true.
      * and useExtrinsicGuess is set to true.
      * (\( \text{RMSE} = \sqrt{\frac{\sum_{i}^{N} \left ( \hat{y_i} - y_i \right )^2}{N}} \)) between the input image points
      * and the 3D object points projected with the estimated pose.
+     *     </li>
+     *   </ul>
      *
-     * More information is described in REF: calib3d_solvePnP
+     * The function estimates the object pose given a set of object points, their corresponding image
+     * projections, as well as the camera intrinsic matrix and the distortion coefficients, see the figure below
+     * (more precisely, the X-axis of the camera frame is pointing to the right, the Y-axis downward
+     * and the Z-axis forward).
+     *   </li>
+     * </ul>
+     *
+     * ![](pnp.jpg)
+     *
+     * Points expressed in the world frame \( \bf{X}_w \) are projected into the image plane \( \left[ u, v \right] \)
+     * using the perspective projection model \( \Pi \) and the camera intrinsic parameters matrix \( \bf{A} \):
+     *
+     * \(
+     *   \begin{align*}
+     *   \begin{bmatrix}
+     *   u \\
+     *   v \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \bf{A} \hspace{0.1em} \Pi \hspace{0.2em} ^{c}\bf{T}_w
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix} \\
+     *   \begin{bmatrix}
+     *   u \\
+     *   v \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \begin{bmatrix}
+     *   f_x &amp; 0 &amp; c_x \\
+     *   0 &amp; f_y &amp; c_y \\
+     *   0 &amp; 0 &amp; 1
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   1 &amp; 0 &amp; 0 &amp; 0 \\
+     *   0 &amp; 1 &amp; 0 &amp; 0 \\
+     *   0 &amp; 0 &amp; 1 &amp; 0
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   r_{11} &amp; r_{12} &amp; r_{13} &amp; t_x \\
+     *   r_{21} &amp; r_{22} &amp; r_{23} &amp; t_y \\
+     *   r_{31} &amp; r_{32} &amp; r_{33} &amp; t_z \\
+     *   0 &amp; 0 &amp; 0 &amp; 1
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix}
+     *   \end{align*}
+     * \)
+     *
+     * The estimated pose is thus the rotation ({@code rvec}) and the translation ({@code tvec}) vectors that allow transforming
+     * a 3D point expressed in the world frame into the camera frame:
+     *
+     * \(
+     *   \begin{align*}
+     *   \begin{bmatrix}
+     *   X_c \\
+     *   Y_c \\
+     *   Z_c \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \hspace{0.2em} ^{c}\bf{T}_w
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix} \\
+     *   \begin{bmatrix}
+     *   X_c \\
+     *   Y_c \\
+     *   Z_c \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \begin{bmatrix}
+     *   r_{11} &amp; r_{12} &amp; r_{13} &amp; t_x \\
+     *   r_{21} &amp; r_{22} &amp; r_{23} &amp; t_y \\
+     *   r_{31} &amp; r_{32} &amp; r_{33} &amp; t_z \\
+     *   0 &amp; 0 &amp; 0 &amp; 1
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix}
+     *   \end{align*}
+     * \)
      *
      * <b>Note:</b>
      * <ul>
@@ -2844,9 +3706,6 @@ public class Calib3d {
 
     /**
      * Finds an object pose from 3D-2D point correspondences.
-     *
-     * SEE: REF: calib3d_solvePnP
-     *
      * This function returns a list of all the possible solutions (a solution is a &lt;rotation vector, translation vector&gt;
      * couple), depending on the number of input points and the chosen method:
      * <ul>
@@ -2893,13 +3752,162 @@ public class Calib3d {
      * @param useExtrinsicGuess Parameter used for #SOLVEPNP_ITERATIVE. If true (1), the function uses
      * the provided rvec and tvec values as initial approximations of the rotation and translation
      * vectors, respectively, and further optimizes them.
-     * @param flags Method for solving a PnP problem: see REF: calib3d_solvePnP_flags
+     * @param flags Method for solving a PnP problem:
+     * <ul>
+     *   <li>
+     *    REF: SOLVEPNP_ITERATIVE Iterative method is based on a Levenberg-Marquardt optimization. In
+     * this case the function finds such a pose that minimizes reprojection error, that is the sum
+     * of squared distances between the observed projections imagePoints and the projected (using
+     *  #projectPoints ) objectPoints .
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_P3P Method is based on the paper of X.S. Gao, X.-R. Hou, J. Tang, H.-F. Chang
+     * "Complete Solution Classification for the Perspective-Three-Point Problem" (CITE: gao2003complete).
+     * In this case the function requires exactly four object and image points.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_AP3P Method is based on the paper of T. Ke, S. Roumeliotis
+     * "An Efficient Algebraic Solution to the Perspective-Three-Point Problem" (CITE: Ke17).
+     * In this case the function requires exactly four object and image points.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_EPNP Method has been introduced by F.Moreno-Noguer, V.Lepetit and P.Fua in the
+     * paper "EPnP: Efficient Perspective-n-Point Camera Pose Estimation" (CITE: lepetit2009epnp).
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_DLS <b>Broken implementation. Using this flag will fallback to EPnP.</b> \n
+     * Method is based on the paper of Joel A. Hesch and Stergios I. Roumeliotis.
+     * "A Direct Least-Squares (DLS) Method for PnP" (CITE: hesch2011direct).
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_UPNP <b>Broken implementation. Using this flag will fallback to EPnP.</b> \n
+     * Method is based on the paper of A.Penate-Sanchez, J.Andrade-Cetto,
+     * F.Moreno-Noguer. "Exhaustive Linearization for Robust Camera Pose and Focal Length
+     * Estimation" (CITE: penate2013exhaustive). In this case the function also estimates the parameters \(f_x\) and \(f_y\)
+     * assuming that both have the same value. Then the cameraMatrix is updated with the estimated
+     * focal length.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_IPPE Method is based on the paper of T. Collins and A. Bartoli.
+     * "Infinitesimal Plane-Based Pose Estimation" (CITE: Collins14). This method requires coplanar object points.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_IPPE_SQUARE Method is based on the paper of Toby Collins and Adrien Bartoli.
+     * "Infinitesimal Plane-Based Pose Estimation" (CITE: Collins14). This method is suitable for marker pose estimation.
+     * It requires 4 coplanar object points defined in the following order:
+     *   <ul>
+     *     <li>
+     *    point 0: [-squareLength / 2,  squareLength / 2, 0]
+     *     </li>
+     *     <li>
+     *    point 1: [ squareLength / 2,  squareLength / 2, 0]
+     *     </li>
+     *     <li>
+     *    point 2: [ squareLength / 2, -squareLength / 2, 0]
+     *     </li>
+     *     <li>
+     *    point 3: [-squareLength / 2, -squareLength / 2, 0]
      * and useExtrinsicGuess is set to true.
      * and useExtrinsicGuess is set to true.
      * (\( \text{RMSE} = \sqrt{\frac{\sum_{i}^{N} \left ( \hat{y_i} - y_i \right )^2}{N}} \)) between the input image points
      * and the 3D object points projected with the estimated pose.
+     *     </li>
+     *   </ul>
      *
-     * More information is described in REF: calib3d_solvePnP
+     * The function estimates the object pose given a set of object points, their corresponding image
+     * projections, as well as the camera intrinsic matrix and the distortion coefficients, see the figure below
+     * (more precisely, the X-axis of the camera frame is pointing to the right, the Y-axis downward
+     * and the Z-axis forward).
+     *   </li>
+     * </ul>
+     *
+     * ![](pnp.jpg)
+     *
+     * Points expressed in the world frame \( \bf{X}_w \) are projected into the image plane \( \left[ u, v \right] \)
+     * using the perspective projection model \( \Pi \) and the camera intrinsic parameters matrix \( \bf{A} \):
+     *
+     * \(
+     *   \begin{align*}
+     *   \begin{bmatrix}
+     *   u \\
+     *   v \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \bf{A} \hspace{0.1em} \Pi \hspace{0.2em} ^{c}\bf{T}_w
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix} \\
+     *   \begin{bmatrix}
+     *   u \\
+     *   v \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \begin{bmatrix}
+     *   f_x &amp; 0 &amp; c_x \\
+     *   0 &amp; f_y &amp; c_y \\
+     *   0 &amp; 0 &amp; 1
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   1 &amp; 0 &amp; 0 &amp; 0 \\
+     *   0 &amp; 1 &amp; 0 &amp; 0 \\
+     *   0 &amp; 0 &amp; 1 &amp; 0
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   r_{11} &amp; r_{12} &amp; r_{13} &amp; t_x \\
+     *   r_{21} &amp; r_{22} &amp; r_{23} &amp; t_y \\
+     *   r_{31} &amp; r_{32} &amp; r_{33} &amp; t_z \\
+     *   0 &amp; 0 &amp; 0 &amp; 1
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix}
+     *   \end{align*}
+     * \)
+     *
+     * The estimated pose is thus the rotation ({@code rvec}) and the translation ({@code tvec}) vectors that allow transforming
+     * a 3D point expressed in the world frame into the camera frame:
+     *
+     * \(
+     *   \begin{align*}
+     *   \begin{bmatrix}
+     *   X_c \\
+     *   Y_c \\
+     *   Z_c \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \hspace{0.2em} ^{c}\bf{T}_w
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix} \\
+     *   \begin{bmatrix}
+     *   X_c \\
+     *   Y_c \\
+     *   Z_c \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \begin{bmatrix}
+     *   r_{11} &amp; r_{12} &amp; r_{13} &amp; t_x \\
+     *   r_{21} &amp; r_{22} &amp; r_{23} &amp; t_y \\
+     *   r_{31} &amp; r_{32} &amp; r_{33} &amp; t_z \\
+     *   0 &amp; 0 &amp; 0 &amp; 1
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix}
+     *   \end{align*}
+     * \)
      *
      * <b>Note:</b>
      * <ul>
@@ -2978,9 +3986,6 @@ public class Calib3d {
 
     /**
      * Finds an object pose from 3D-2D point correspondences.
-     *
-     * SEE: REF: calib3d_solvePnP
-     *
      * This function returns a list of all the possible solutions (a solution is a &lt;rotation vector, translation vector&gt;
      * couple), depending on the number of input points and the chosen method:
      * <ul>
@@ -3027,12 +4032,161 @@ public class Calib3d {
      * @param useExtrinsicGuess Parameter used for #SOLVEPNP_ITERATIVE. If true (1), the function uses
      * the provided rvec and tvec values as initial approximations of the rotation and translation
      * vectors, respectively, and further optimizes them.
+     * <ul>
+     *   <li>
+     *    REF: SOLVEPNP_ITERATIVE Iterative method is based on a Levenberg-Marquardt optimization. In
+     * this case the function finds such a pose that minimizes reprojection error, that is the sum
+     * of squared distances between the observed projections imagePoints and the projected (using
+     *  #projectPoints ) objectPoints .
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_P3P Method is based on the paper of X.S. Gao, X.-R. Hou, J. Tang, H.-F. Chang
+     * "Complete Solution Classification for the Perspective-Three-Point Problem" (CITE: gao2003complete).
+     * In this case the function requires exactly four object and image points.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_AP3P Method is based on the paper of T. Ke, S. Roumeliotis
+     * "An Efficient Algebraic Solution to the Perspective-Three-Point Problem" (CITE: Ke17).
+     * In this case the function requires exactly four object and image points.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_EPNP Method has been introduced by F.Moreno-Noguer, V.Lepetit and P.Fua in the
+     * paper "EPnP: Efficient Perspective-n-Point Camera Pose Estimation" (CITE: lepetit2009epnp).
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_DLS <b>Broken implementation. Using this flag will fallback to EPnP.</b> \n
+     * Method is based on the paper of Joel A. Hesch and Stergios I. Roumeliotis.
+     * "A Direct Least-Squares (DLS) Method for PnP" (CITE: hesch2011direct).
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_UPNP <b>Broken implementation. Using this flag will fallback to EPnP.</b> \n
+     * Method is based on the paper of A.Penate-Sanchez, J.Andrade-Cetto,
+     * F.Moreno-Noguer. "Exhaustive Linearization for Robust Camera Pose and Focal Length
+     * Estimation" (CITE: penate2013exhaustive). In this case the function also estimates the parameters \(f_x\) and \(f_y\)
+     * assuming that both have the same value. Then the cameraMatrix is updated with the estimated
+     * focal length.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_IPPE Method is based on the paper of T. Collins and A. Bartoli.
+     * "Infinitesimal Plane-Based Pose Estimation" (CITE: Collins14). This method requires coplanar object points.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_IPPE_SQUARE Method is based on the paper of Toby Collins and Adrien Bartoli.
+     * "Infinitesimal Plane-Based Pose Estimation" (CITE: Collins14). This method is suitable for marker pose estimation.
+     * It requires 4 coplanar object points defined in the following order:
+     *   <ul>
+     *     <li>
+     *    point 0: [-squareLength / 2,  squareLength / 2, 0]
+     *     </li>
+     *     <li>
+     *    point 1: [ squareLength / 2,  squareLength / 2, 0]
+     *     </li>
+     *     <li>
+     *    point 2: [ squareLength / 2, -squareLength / 2, 0]
+     *     </li>
+     *     <li>
+     *    point 3: [-squareLength / 2, -squareLength / 2, 0]
      * and useExtrinsicGuess is set to true.
      * and useExtrinsicGuess is set to true.
      * (\( \text{RMSE} = \sqrt{\frac{\sum_{i}^{N} \left ( \hat{y_i} - y_i \right )^2}{N}} \)) between the input image points
      * and the 3D object points projected with the estimated pose.
+     *     </li>
+     *   </ul>
      *
-     * More information is described in REF: calib3d_solvePnP
+     * The function estimates the object pose given a set of object points, their corresponding image
+     * projections, as well as the camera intrinsic matrix and the distortion coefficients, see the figure below
+     * (more precisely, the X-axis of the camera frame is pointing to the right, the Y-axis downward
+     * and the Z-axis forward).
+     *   </li>
+     * </ul>
+     *
+     * ![](pnp.jpg)
+     *
+     * Points expressed in the world frame \( \bf{X}_w \) are projected into the image plane \( \left[ u, v \right] \)
+     * using the perspective projection model \( \Pi \) and the camera intrinsic parameters matrix \( \bf{A} \):
+     *
+     * \(
+     *   \begin{align*}
+     *   \begin{bmatrix}
+     *   u \\
+     *   v \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \bf{A} \hspace{0.1em} \Pi \hspace{0.2em} ^{c}\bf{T}_w
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix} \\
+     *   \begin{bmatrix}
+     *   u \\
+     *   v \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \begin{bmatrix}
+     *   f_x &amp; 0 &amp; c_x \\
+     *   0 &amp; f_y &amp; c_y \\
+     *   0 &amp; 0 &amp; 1
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   1 &amp; 0 &amp; 0 &amp; 0 \\
+     *   0 &amp; 1 &amp; 0 &amp; 0 \\
+     *   0 &amp; 0 &amp; 1 &amp; 0
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   r_{11} &amp; r_{12} &amp; r_{13} &amp; t_x \\
+     *   r_{21} &amp; r_{22} &amp; r_{23} &amp; t_y \\
+     *   r_{31} &amp; r_{32} &amp; r_{33} &amp; t_z \\
+     *   0 &amp; 0 &amp; 0 &amp; 1
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix}
+     *   \end{align*}
+     * \)
+     *
+     * The estimated pose is thus the rotation ({@code rvec}) and the translation ({@code tvec}) vectors that allow transforming
+     * a 3D point expressed in the world frame into the camera frame:
+     *
+     * \(
+     *   \begin{align*}
+     *   \begin{bmatrix}
+     *   X_c \\
+     *   Y_c \\
+     *   Z_c \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \hspace{0.2em} ^{c}\bf{T}_w
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix} \\
+     *   \begin{bmatrix}
+     *   X_c \\
+     *   Y_c \\
+     *   Z_c \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \begin{bmatrix}
+     *   r_{11} &amp; r_{12} &amp; r_{13} &amp; t_x \\
+     *   r_{21} &amp; r_{22} &amp; r_{23} &amp; t_y \\
+     *   r_{31} &amp; r_{32} &amp; r_{33} &amp; t_z \\
+     *   0 &amp; 0 &amp; 0 &amp; 1
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix}
+     *   \end{align*}
+     * \)
      *
      * <b>Note:</b>
      * <ul>
@@ -3111,9 +4265,6 @@ public class Calib3d {
 
     /**
      * Finds an object pose from 3D-2D point correspondences.
-     *
-     * SEE: REF: calib3d_solvePnP
-     *
      * This function returns a list of all the possible solutions (a solution is a &lt;rotation vector, translation vector&gt;
      * couple), depending on the number of input points and the chosen method:
      * <ul>
@@ -3159,12 +4310,161 @@ public class Calib3d {
      * @param tvecs Vector of output translation vectors.
      * the provided rvec and tvec values as initial approximations of the rotation and translation
      * vectors, respectively, and further optimizes them.
+     * <ul>
+     *   <li>
+     *    REF: SOLVEPNP_ITERATIVE Iterative method is based on a Levenberg-Marquardt optimization. In
+     * this case the function finds such a pose that minimizes reprojection error, that is the sum
+     * of squared distances between the observed projections imagePoints and the projected (using
+     *  #projectPoints ) objectPoints .
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_P3P Method is based on the paper of X.S. Gao, X.-R. Hou, J. Tang, H.-F. Chang
+     * "Complete Solution Classification for the Perspective-Three-Point Problem" (CITE: gao2003complete).
+     * In this case the function requires exactly four object and image points.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_AP3P Method is based on the paper of T. Ke, S. Roumeliotis
+     * "An Efficient Algebraic Solution to the Perspective-Three-Point Problem" (CITE: Ke17).
+     * In this case the function requires exactly four object and image points.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_EPNP Method has been introduced by F.Moreno-Noguer, V.Lepetit and P.Fua in the
+     * paper "EPnP: Efficient Perspective-n-Point Camera Pose Estimation" (CITE: lepetit2009epnp).
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_DLS <b>Broken implementation. Using this flag will fallback to EPnP.</b> \n
+     * Method is based on the paper of Joel A. Hesch and Stergios I. Roumeliotis.
+     * "A Direct Least-Squares (DLS) Method for PnP" (CITE: hesch2011direct).
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_UPNP <b>Broken implementation. Using this flag will fallback to EPnP.</b> \n
+     * Method is based on the paper of A.Penate-Sanchez, J.Andrade-Cetto,
+     * F.Moreno-Noguer. "Exhaustive Linearization for Robust Camera Pose and Focal Length
+     * Estimation" (CITE: penate2013exhaustive). In this case the function also estimates the parameters \(f_x\) and \(f_y\)
+     * assuming that both have the same value. Then the cameraMatrix is updated with the estimated
+     * focal length.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_IPPE Method is based on the paper of T. Collins and A. Bartoli.
+     * "Infinitesimal Plane-Based Pose Estimation" (CITE: Collins14). This method requires coplanar object points.
+     *   </li>
+     *   <li>
+     *    REF: SOLVEPNP_IPPE_SQUARE Method is based on the paper of Toby Collins and Adrien Bartoli.
+     * "Infinitesimal Plane-Based Pose Estimation" (CITE: Collins14). This method is suitable for marker pose estimation.
+     * It requires 4 coplanar object points defined in the following order:
+     *   <ul>
+     *     <li>
+     *    point 0: [-squareLength / 2,  squareLength / 2, 0]
+     *     </li>
+     *     <li>
+     *    point 1: [ squareLength / 2,  squareLength / 2, 0]
+     *     </li>
+     *     <li>
+     *    point 2: [ squareLength / 2, -squareLength / 2, 0]
+     *     </li>
+     *     <li>
+     *    point 3: [-squareLength / 2, -squareLength / 2, 0]
      * and useExtrinsicGuess is set to true.
      * and useExtrinsicGuess is set to true.
      * (\( \text{RMSE} = \sqrt{\frac{\sum_{i}^{N} \left ( \hat{y_i} - y_i \right )^2}{N}} \)) between the input image points
      * and the 3D object points projected with the estimated pose.
+     *     </li>
+     *   </ul>
      *
-     * More information is described in REF: calib3d_solvePnP
+     * The function estimates the object pose given a set of object points, their corresponding image
+     * projections, as well as the camera intrinsic matrix and the distortion coefficients, see the figure below
+     * (more precisely, the X-axis of the camera frame is pointing to the right, the Y-axis downward
+     * and the Z-axis forward).
+     *   </li>
+     * </ul>
+     *
+     * ![](pnp.jpg)
+     *
+     * Points expressed in the world frame \( \bf{X}_w \) are projected into the image plane \( \left[ u, v \right] \)
+     * using the perspective projection model \( \Pi \) and the camera intrinsic parameters matrix \( \bf{A} \):
+     *
+     * \(
+     *   \begin{align*}
+     *   \begin{bmatrix}
+     *   u \\
+     *   v \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \bf{A} \hspace{0.1em} \Pi \hspace{0.2em} ^{c}\bf{T}_w
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix} \\
+     *   \begin{bmatrix}
+     *   u \\
+     *   v \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \begin{bmatrix}
+     *   f_x &amp; 0 &amp; c_x \\
+     *   0 &amp; f_y &amp; c_y \\
+     *   0 &amp; 0 &amp; 1
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   1 &amp; 0 &amp; 0 &amp; 0 \\
+     *   0 &amp; 1 &amp; 0 &amp; 0 \\
+     *   0 &amp; 0 &amp; 1 &amp; 0
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   r_{11} &amp; r_{12} &amp; r_{13} &amp; t_x \\
+     *   r_{21} &amp; r_{22} &amp; r_{23} &amp; t_y \\
+     *   r_{31} &amp; r_{32} &amp; r_{33} &amp; t_z \\
+     *   0 &amp; 0 &amp; 0 &amp; 1
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix}
+     *   \end{align*}
+     * \)
+     *
+     * The estimated pose is thus the rotation ({@code rvec}) and the translation ({@code tvec}) vectors that allow transforming
+     * a 3D point expressed in the world frame into the camera frame:
+     *
+     * \(
+     *   \begin{align*}
+     *   \begin{bmatrix}
+     *   X_c \\
+     *   Y_c \\
+     *   Z_c \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \hspace{0.2em} ^{c}\bf{T}_w
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix} \\
+     *   \begin{bmatrix}
+     *   X_c \\
+     *   Y_c \\
+     *   Z_c \\
+     *   1
+     *   \end{bmatrix} &amp;=
+     *   \begin{bmatrix}
+     *   r_{11} &amp; r_{12} &amp; r_{13} &amp; t_x \\
+     *   r_{21} &amp; r_{22} &amp; r_{23} &amp; t_y \\
+     *   r_{31} &amp; r_{32} &amp; r_{33} &amp; t_z \\
+     *   0 &amp; 0 &amp; 0 &amp; 1
+     *   \end{bmatrix}
+     *   \begin{bmatrix}
+     *   X_{w} \\
+     *   Y_{w} \\
+     *   Z_{w} \\
+     *   1
+     *   \end{bmatrix}
+     *   \end{align*}
+     * \)
      *
      * <b>Note:</b>
      * <ul>

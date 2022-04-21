@@ -307,14 +307,6 @@ public class Imgproc {
             COLOR_BayerGB2BGR = 47,
             COLOR_BayerRG2BGR = 48,
             COLOR_BayerGR2BGR = 49,
-            COLOR_BayerRGGB2BGR = COLOR_BayerBG2BGR,
-            COLOR_BayerGRBG2BGR = COLOR_BayerGB2BGR,
-            COLOR_BayerBGGR2BGR = COLOR_BayerRG2BGR,
-            COLOR_BayerGBRG2BGR = COLOR_BayerGR2BGR,
-            COLOR_BayerRGGB2RGB = COLOR_BayerBGGR2BGR,
-            COLOR_BayerGRBG2RGB = COLOR_BayerGBRG2BGR,
-            COLOR_BayerBGGR2RGB = COLOR_BayerRGGB2BGR,
-            COLOR_BayerGBRG2RGB = COLOR_BayerGRBG2BGR,
             COLOR_BayerBG2RGB = COLOR_BayerRG2BGR,
             COLOR_BayerGB2RGB = COLOR_BayerGR2BGR,
             COLOR_BayerRG2RGB = COLOR_BayerBG2BGR,
@@ -323,22 +315,10 @@ public class Imgproc {
             COLOR_BayerGB2GRAY = 87,
             COLOR_BayerRG2GRAY = 88,
             COLOR_BayerGR2GRAY = 89,
-            COLOR_BayerRGGB2GRAY = COLOR_BayerBG2GRAY,
-            COLOR_BayerGRBG2GRAY = COLOR_BayerGB2GRAY,
-            COLOR_BayerBGGR2GRAY = COLOR_BayerRG2GRAY,
-            COLOR_BayerGBRG2GRAY = COLOR_BayerGR2GRAY,
             COLOR_BayerBG2BGR_VNG = 62,
             COLOR_BayerGB2BGR_VNG = 63,
             COLOR_BayerRG2BGR_VNG = 64,
             COLOR_BayerGR2BGR_VNG = 65,
-            COLOR_BayerRGGB2BGR_VNG = COLOR_BayerBG2BGR_VNG,
-            COLOR_BayerGRBG2BGR_VNG = COLOR_BayerGB2BGR_VNG,
-            COLOR_BayerBGGR2BGR_VNG = COLOR_BayerRG2BGR_VNG,
-            COLOR_BayerGBRG2BGR_VNG = COLOR_BayerGR2BGR_VNG,
-            COLOR_BayerRGGB2RGB_VNG = COLOR_BayerBGGR2BGR_VNG,
-            COLOR_BayerGRBG2RGB_VNG = COLOR_BayerGBRG2BGR_VNG,
-            COLOR_BayerBGGR2RGB_VNG = COLOR_BayerRGGB2BGR_VNG,
-            COLOR_BayerGBRG2RGB_VNG = COLOR_BayerGRBG2BGR_VNG,
             COLOR_BayerBG2RGB_VNG = COLOR_BayerRG2BGR_VNG,
             COLOR_BayerGB2RGB_VNG = COLOR_BayerGR2BGR_VNG,
             COLOR_BayerRG2RGB_VNG = COLOR_BayerBG2BGR_VNG,
@@ -347,14 +327,6 @@ public class Imgproc {
             COLOR_BayerGB2BGR_EA = 136,
             COLOR_BayerRG2BGR_EA = 137,
             COLOR_BayerGR2BGR_EA = 138,
-            COLOR_BayerRGGB2BGR_EA = COLOR_BayerBG2BGR_EA,
-            COLOR_BayerGRBG2BGR_EA = COLOR_BayerGB2BGR_EA,
-            COLOR_BayerBGGR2BGR_EA = COLOR_BayerRG2BGR_EA,
-            COLOR_BayerGBRG2BGR_EA = COLOR_BayerGR2BGR_EA,
-            COLOR_BayerRGGB2RGB_EA = COLOR_BayerBGGR2BGR_EA,
-            COLOR_BayerGRBG2RGB_EA = COLOR_BayerGBRG2BGR_EA,
-            COLOR_BayerBGGR2RGB_EA = COLOR_BayerRGGB2BGR_EA,
-            COLOR_BayerGBRG2RGB_EA = COLOR_BayerGRBG2BGR_EA,
             COLOR_BayerBG2RGB_EA = COLOR_BayerRG2BGR_EA,
             COLOR_BayerGB2RGB_EA = COLOR_BayerGR2BGR_EA,
             COLOR_BayerRG2RGB_EA = COLOR_BayerBG2BGR_EA,
@@ -363,14 +335,6 @@ public class Imgproc {
             COLOR_BayerGB2BGRA = 140,
             COLOR_BayerRG2BGRA = 141,
             COLOR_BayerGR2BGRA = 142,
-            COLOR_BayerRGGB2BGRA = COLOR_BayerBG2BGRA,
-            COLOR_BayerGRBG2BGRA = COLOR_BayerGB2BGRA,
-            COLOR_BayerBGGR2BGRA = COLOR_BayerRG2BGRA,
-            COLOR_BayerGBRG2BGRA = COLOR_BayerGR2BGRA,
-            COLOR_BayerRGGB2RGBA = COLOR_BayerBGGR2BGRA,
-            COLOR_BayerGRBG2RGBA = COLOR_BayerGBRG2BGRA,
-            COLOR_BayerBGGR2RGBA = COLOR_BayerRGGB2BGRA,
-            COLOR_BayerGBRG2RGBA = COLOR_BayerGRBG2BGRA,
             COLOR_BayerBG2RGBA = COLOR_BayerRG2BGRA,
             COLOR_BayerGB2RGBA = COLOR_BayerGR2BGRA,
             COLOR_BayerRG2RGBA = COLOR_BayerBG2BGRA,
@@ -3364,12 +3328,12 @@ public class Imgproc {
      * @param point Input vector of points. Each vector must be encoded as a Point vector \((x,y)\). Type must be CV_32FC2 or CV_32SC2.
      * @param lines Output vector of found lines. Each vector is encoded as a vector&lt;Vec3d&gt; \((votes, rho, theta)\).
      * The larger the value of 'votes', the higher the reliability of the Hough line.
-     * @param lines_max Max count of Hough lines.
+     * @param lines_max Max count of hough lines.
      * @param threshold Accumulator threshold parameter. Only those lines are returned that get enough
-     * votes ( \(&gt;\texttt{threshold}\) ).
-     * @param min_rho Minimum value for \(\rho\) for the accumulator (Note: \(\rho\) can be negative. The absolute value \(|\rho|\) is the distance of a line to the origin.).
-     * @param max_rho Maximum value for \(\rho\) for the accumulator.
-     * @param rho_step Distance resolution of the accumulator.
+     * votes ( \(&gt;\texttt{threshold}\) )
+     * @param min_rho Minimum Distance value of the accumulator in pixels.
+     * @param max_rho Maximum Distance value of the accumulator in pixels.
+     * @param rho_step Distance resolution of the accumulator in pixels.
      * @param min_theta Minimum angle value of the accumulator in radians.
      * @param max_theta Maximum angle value of the accumulator in radians.
      * @param theta_step Angle resolution of the accumulator in radians.
@@ -7346,10 +7310,9 @@ public class Imgproc {
      * represents the background label. ltype specifies the output label image type, an important
      * consideration based on the total number of labels or alternatively the total number of pixels in
      * the source image. ccltype specifies the connected components labeling algorithm to use, currently
-     * Bolelli (Spaghetti) CITE: Bolelli2019, Grana (BBDT) CITE: Grana2010 and Wu's (SAUF) CITE: Wu2009 algorithms
-     * are supported, see the #ConnectedComponentsAlgorithmsTypes for details. Note that SAUF algorithm forces
-     * a row major ordering of labels while Spaghetti and BBDT do not.
-     * This function uses parallel version of the algorithms if at least one allowed
+     * Grana (BBDT) and Wu's (SAUF) CITE: Wu2009 algorithms are supported, see the #ConnectedComponentsAlgorithmsTypes
+     * for details. Note that SAUF algorithm forces a row major ordering of labels while BBDT does not.
+     * This function uses parallel version of both Grana and Wu's algorithms if at least one allowed
      * parallel framework is enabled and if the rows of the image are at least twice the number returned by #getNumberOfCPUs.
      *
      * @param image the 8-bit single-channel image to be labeled
@@ -7416,10 +7379,9 @@ public class Imgproc {
      * represents the background label. ltype specifies the output label image type, an important
      * consideration based on the total number of labels or alternatively the total number of pixels in
      * the source image. ccltype specifies the connected components labeling algorithm to use, currently
-     * Bolelli (Spaghetti) CITE: Bolelli2019, Grana (BBDT) CITE: Grana2010 and Wu's (SAUF) CITE: Wu2009 algorithms
-     * are supported, see the #ConnectedComponentsAlgorithmsTypes for details. Note that SAUF algorithm forces
-     * a row major ordering of labels while Spaghetti and BBDT do not.
-     * This function uses parallel version of the algorithms (statistics included) if at least one allowed
+     * Grana's (BBDT) and Wu's (SAUF) CITE: Wu2009 algorithms are supported, see the #ConnectedComponentsAlgorithmsTypes
+     * for details. Note that SAUF algorithm forces a row major ordering of labels while BBDT does not.
+     * This function uses parallel version of both Grana and Wu's algorithms (statistics included) if at least one allowed
      * parallel framework is enabled and if the rows of the image are at least twice the number returned by #getNumberOfCPUs.
      *
      * @param image the 8-bit single-channel image to be labeled
