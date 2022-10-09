@@ -140,6 +140,8 @@ class AppActivity : CameraActivity() {
 
             }
         }
+
+
         var map = BitmapFactory.decodeResource(resources, R.mipmap.credit_card_01)
         cameraView.setCvCameraViewListener(object : CameraBridgeViewBase.CvCameraViewListener2 {
             override fun onCameraViewStarted(width: Int, height: Int) {
